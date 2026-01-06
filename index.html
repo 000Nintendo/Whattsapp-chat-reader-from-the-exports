@@ -7,9 +7,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
-            --wa-bg: #efeae2; --wa-header: #f0f2f5; --wa-sent: #dcf8c6;
-            --wa-received: #ffffff; --wa-text: #111b21;
-            --wa-time: #667781; --wa-system: #e1f3fb; --wa-brand: #00a884;
+            --wa-bg-color: #efeae2; 
+            --wa-header: #f0f2f5; 
+            --wa-sent: #dcf8c6;
+            --wa-received: #ffffff; 
+            --wa-text: #111b21;
+            --wa-time: #667781; 
+            --wa-system: rgba(225, 243, 251, 0.9); 
+            --wa-brand: #00a884;
             --wa-danger: #d32f2f;
         }
 
@@ -22,69 +27,63 @@
         /* --- DASHBOARD --- */
         #dashboard { padding: 20px; max-width: 600px; margin: 0 auto; display: block; overflow-y: auto; height: 100%; box-sizing: border-box; }
         .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .btn-add { background: var(--wa-brand); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-add { background: var(--wa-brand); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-weight: bold; }
 
         .chat-card { 
             background: white; border-radius: 12px; margin-bottom: 16px;
-            display: flex; flex-direction: column; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06); overflow: hidden;
-            border: 1px solid #e1e1e1;
+            display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.06); overflow: hidden; border: 1px solid #e1e1e1;
         }
-
         .chat-info { padding: 16px; border-bottom: 1px solid #f0f2f5; }
         .chat-info h4 { margin: 0; color: var(--wa-text); font-size: 17px; }
-        
-        .meta-row { font-size: 11px; color: var(--wa-time); margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
-        .file-tag { background: #f0f2f5; padding: 3px 8px; border-radius: 6px; font-weight: 600; color: #54656f; }
+        .meta-row { font-size: 11px; color: var(--wa-time); margin-top: 8px; display: flex; gap: 8px; }
+        .file-tag { background: #f0f2f5; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
 
         .actions { display: flex; width: 100%; height: 52px; }
-        .btn-view, .btn-del { 
-            flex: 1; border: none; font-size: 14px; font-weight: 600; cursor: pointer; 
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
+        .btn-view, .btn-del { flex: 1; border: none; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-view { background: #e7fce3; color: #1fa855; border-right: 1px solid #dcf1da; }
         .btn-del { background: #fff5f5; color: var(--wa-danger); }
-        .btn-view:active, .btn-del:active { opacity: 0.6; }
-
-        /* --- OVERLAYS --- */
-        .overlay { 
-            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); 
-            display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; box-sizing: border-box;
-        }
-        .modal { background: white; padding: 25px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; }
-        .drop-zone { border: 2px dashed #ccc; padding: 30px; border-radius: 15px; margin-top: 15px; }
-        .drop-zone.drag-active { border-color: var(--wa-brand); background: #f0fffb; }
-        #user-options-list { margin-top: 20px; max-height: 250px; overflow-y: auto; }
-        .user-btn { display: block; width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #eee; border-radius: 10px; background: #fdfdfd; cursor: pointer; }
 
         /* --- CHAT VIEW --- */
-        .chat-app { width: 100vw; height: 100vh; background: var(--wa-bg); display: none; flex-direction: column; }
+        .chat-app { width: 100vw; height: 100vh; display: none; flex-direction: column; background-color: var(--wa-bg-color); position: relative; }
+        
         .header { 
             background: var(--wa-header); padding: 10px 15px; display: flex; align-items: center; 
-            border-bottom: 1px solid #d1d7db; gap: 12px; flex-shrink: 0; height: 60px; box-sizing: border-box;
+            border-bottom: 1px solid rgba(0,0,0,0.1); gap: 12px; height: 60px; box-sizing: border-box; z-index: 10;
         }
         .btn-back { background: none; border: none; font-size: 24px; cursor: pointer; color: #54656f; }
-        .search-box { background: white; border-radius: 20px; display: flex; align-items: center; padding: 5px 12px; flex: 1; max-width: 180px; margin-left: auto; }
-        .search-box input { border: none; outline: none; width: 100%; font-size: 14px; }
+        .search-box { background: white; border-radius: 20px; display: flex; align-items: center; padding: 5px 12px; flex: 1; max-width: 180px; margin-left: auto; border: 1px solid #e1e1e1; }
+        .search-box input { border: none; outline: none; width: 100%; font-size: 14px; background: transparent; }
 
+        /* THE FIX: EMBEDDED PATTERN */
         #chat-window { 
-            flex: 1; overflow-y: scroll; padding: 10px 12px; 
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
-            display: flex; flex-direction: column;
+            flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column;
+            position: relative;
+            background-color: var(--wa-bg-color);
+            /* This is a built-in lightweight pattern that doesn't need an external image */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath fill-rule='evenodd' d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c3.314 0 6-2.686 6-6s-2.686-6-6-6-6 2.686-6 6 2.686 6 6 6zm-45 46c3.314 0 6-2.686 6-6s-2.686-6-6-6-6 2.686-6 6 2.686 6 6 6zm43 18c3.314 0 6-2.686 6-6s-2.686-6-6-6-6 2.686-6 6 2.686 6 6 6zm10-54c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8zM24 46c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8zm43 38c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8zM18 10c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z'/%3E%3C/g%3E%3C/svg%3E");
+            background-repeat: repeat;
         }
 
-        .msg-container { display: flex; flex-direction: column; margin-bottom: 2px; }
+        .msg-container { display: flex; flex-direction: column; margin-bottom: 2px; z-index: 2; }
         .bubble { 
-            position: relative; padding: 6px 9px 8px; border-radius: 7.5px; 
-            max-width: 85%; font-size: 14.2px; line-height: 1.45; 
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); margin-top: 4px; word-wrap: break-word;
+            position: relative; padding: 6px 9px 8px; border-radius: 7.5px; max-width: 85%; 
+            font-size: 14.5px; line-height: 1.45; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); margin-top: 4px; word-wrap: break-word;
         }
+        
+        /* ALIGNMENT FIX */
         .received { align-self: flex-start; background: var(--wa-received); border-top-left-radius: 0; margin-left: 5px; }
         .sent { align-self: flex-end; background: var(--wa-sent); border-top-right-radius: 0; margin-right: 5px; }
+        
         .received::before { content: ""; position: absolute; left: -6px; top: 0; border-width: 0 6px 8px 0; border-style: solid; border-color: transparent var(--wa-received) transparent transparent; }
         .sent::before { content: ""; position: absolute; right: -6px; top: 0; border-width: 8px 6px 0 0; border-style: solid; border-color: var(--wa-sent) transparent transparent transparent; }
-        .time { font-size: 10px; color: var(--wa-time); float: right; margin: 8px 0 -2px 8px; }
-        .system-date { align-self: center; background: var(--wa-system); padding: 5px 12px; border-radius: 7px; font-size: 12px; margin: 15px 0; }
+
+        .time { font-size: 11px; color: var(--wa-time); float: right; margin: 8px 0 -2px 8px; }
+        .system-date { align-self: center; background: var(--wa-system); padding: 5px 12px; border-radius: 8px; font-size: 12px; margin: 15px 0; font-weight: 500; color: #54656f; z-index: 2; }
+        
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
+        .modal { background: white; padding: 25px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; }
+        .drop-zone { border: 2px dashed #ccc; padding: 30px; border-radius: 15px; margin-top: 15px; }
+        .user-btn { display: block; width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #eee; border-radius: 10px; background: #fdfdfd; cursor: pointer; text-align: center; font-weight: bold; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -100,9 +99,9 @@
 
     <div id="upload-overlay" class="overlay" onclick="if(event.target===this) closeModal('upload-overlay')">
         <div class="modal">
-            <h3 style="margin:0">Import Chat</h3>
+            <h3>Import Chat</h3>
             <div id="drop-zone" class="drop-zone">
-                <p style="color:#667781">Drop .txt or .zip here</p>
+                <p>Drop file here</p>
                 <input type="file" id="fileInput" accept=".txt,.zip" style="width:100%">
             </div>
             <button onclick="closeModal('upload-overlay')" style="margin-top:15px; border:none; background:none; color:#667781; cursor:pointer">Cancel</button>
@@ -112,7 +111,7 @@
     <div id="user-select-overlay" class="overlay">
         <div class="modal">
             <h3>Who are you?</h3>
-            <p style="color:#667781; font-size:13px">Choose the name that represents "Sent" messages.</p>
+            <p style="color:#667781; font-size:13px; margin-bottom:15px;">Your messages will be green and on the right.</p>
             <div id="user-options-list"></div>
         </div>
     </div>
@@ -157,19 +156,12 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('fileInput');
-
-    ['dragover', 'dragenter'].forEach(e => dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.add('drag-active'); }));
-    ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('drag-active')));
-    dropZone.addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
     fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
 
     async function handleFile(file) {
         if (!file) return;
         pendingData.name = file.name.replace('.zip', '').replace('.txt', '');
-        
-        // FIX: Reliable date capture
         const timestamp = file.lastModified || Date.now();
         const d = new Date(timestamp);
         pendingData.fileDate = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -180,20 +172,24 @@
                 const zip = new JSZip();
                 const contents = await zip.loadAsync(file);
                 const chatFile = Object.keys(contents.files).find(name => name.endsWith('.txt'));
-                if (!chatFile) return alert("No text file in ZIP");
                 text = await contents.files[chatFile].async("text");
             } else { text = await file.text(); }
             pendingData.text = text;
 
             const names = new Set();
-            text.split('\n').slice(0, 500).forEach(line => {
-                const match = line.match(/(?:^\[?\d.+\d\]?\s(?:-\s)?)([^:]+):\s/);
-                if (match) names.add(match[1].trim());
+            const lines = text.split('\n').slice(0, 1000);
+            lines.forEach(line => {
+                const match = line.match(/(?:\d{1,2}[\/\.]\d{1,2}[\/\.]\d{2,4},?\s\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM)?\s?)(?:-\s|\]\s)?([^:]+):/i);
+                if (match) {
+                    let foundName = match[1].trim();
+                    if (!['AM', 'PM', 'A.M.', 'P.M.'].includes(foundName.toUpperCase())) {
+                        names.add(foundName);
+                    }
+                }
             });
 
             closeModal('upload-overlay');
-            if (names.size === 0) saveChat("User"); 
-            else showUserSelect(Array.from(names));
+            showUserSelect(Array.from(names));
         } catch (err) { alert("Error reading file."); }
     }
 
@@ -215,13 +211,7 @@
             name: pendingData.name, data: pendingData.text, user: activeUser,
             fileDate: pendingData.fileDate, dateAdded: new Date().toLocaleDateString()
         });
-        try {
-            localStorage.setItem('wa_multi_chats', JSON.stringify(savedChats));
-        } catch (e) {
-            alert("Storage full! Delete an old chat first.");
-            savedChats.pop();
-            return;
-        }
+        localStorage.setItem('wa_multi_chats', JSON.stringify(savedChats));
         closeModal('user-select-overlay');
         renderDashboard();
     }
@@ -234,15 +224,22 @@
         const win = document.getElementById('chat-window');
         win.innerHTML = '';
         let lastDate = "";
+
+        const selectedUser = chat.user.trim().toLowerCase();
+
         chat.data.split('\n').forEach(line => {
-            const match = line.match(/(?:^\[?(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}(?::\d{2})?\s?[APM]*)\]?\s(?:-\s)?)([^:]+):\s([\s\S]+)/);
+            const match = line.match(/(?:^\[?(\d{1,2}[\/\.]\d{1,2}[\/\.]\d{2,4}),\s(\d{1,2}:\d{2}(?::\d{2})?\s?[APM]*)\]?\s(?:-\s)?)([^:]+):\s([\s\S]+)/i);
+            
             if (match) {
                 const [_, date, time, author, content] = match;
                 if (date !== lastDate) {
                     const d = document.createElement('div'); d.className = 'system-date'; d.innerText = date;
                     win.appendChild(d); lastDate = date;
                 }
-                const isSent = author.trim() === chat.user;
+
+                const currentAuthor = author.trim().toLowerCase();
+                const isSent = (currentAuthor === selectedUser);
+
                 const div = document.createElement('div'); div.className = 'msg-container';
                 div.innerHTML = `<div class="bubble ${isSent ? 'sent' : 'received'}"><span>${content.replace(/\n/g, '<br>')}</span><span class="time">${time}</span></div>`;
                 win.appendChild(div);
@@ -252,7 +249,7 @@
     }
 
     function deleteChat(index) {
-        if(confirm("Delete this chat permanently?")) {
+        if(confirm("Delete permanently?")) {
             savedChats.splice(index, 1);
             localStorage.setItem('wa_multi_chats', JSON.stringify(savedChats));
             renderDashboard();

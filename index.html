@@ -3,171 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WhatsApp Viewer Full</title>
+    <title>WhatsApp Archive Manager</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
             --wa-bg: #efeae2; --wa-header: #f0f2f5; --wa-sent: #dcf8c6;
             --wa-received: #ffffff; --wa-text: #111b21;
             --wa-time: #667781; --wa-system: #e1f3fb; --wa-brand: #00a884;
+            --wa-danger: #d32f2f;
         }
 
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #d1d7db; overflow: hidden;
+            background-color: #f0f2f5; overflow: hidden;
         }
+
+        /* --- DASHBOARD --- */
+        #dashboard { padding: 20px; max-width: 600px; margin: 0 auto; display: block; overflow-y: auto; height: 100%; box-sizing: border-box; }
+        .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .btn-add { background: var(--wa-brand); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        .chat-card { 
+            background: white; border-radius: 12px; margin-bottom: 16px;
+            display: flex; flex-direction: column; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06); overflow: hidden;
+            border: 1px solid #e1e1e1;
+        }
+
+        .chat-info { padding: 16px; border-bottom: 1px solid #f0f2f5; }
+        .chat-info h4 { margin: 0; color: var(--wa-text); font-size: 17px; }
         
-        .card { 
-            background: white; padding: 2rem; border-radius: 10px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; 
-            position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); width: 85%; max-width: 400px; 
-        }
+        .meta-row { font-size: 11px; color: var(--wa-time); margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .file-tag { background: #f0f2f5; padding: 3px 8px; border-radius: 6px; font-weight: 600; color: #54656f; }
 
-        .chat-app { 
-            width: 100vw; height: 100vh; 
-            background: var(--wa-bg); display: none; flex-direction: column; 
+        .actions { display: flex; width: 100%; height: 52px; }
+        .btn-view, .btn-del { 
+            flex: 1; border: none; font-size: 14px; font-weight: 600; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+        .btn-view { background: #e7fce3; color: #1fa855; border-right: 1px solid #dcf1da; }
+        .btn-del { background: #fff5f5; color: var(--wa-danger); }
+        .btn-view:active, .btn-del:active { opacity: 0.6; }
 
+        /* --- OVERLAYS --- */
+        .overlay { 
+            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); 
+            display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; box-sizing: border-box;
+        }
+        .modal { background: white; padding: 25px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; }
+        .drop-zone { border: 2px dashed #ccc; padding: 30px; border-radius: 15px; margin-top: 15px; }
+        .drop-zone.drag-active { border-color: var(--wa-brand); background: #f0fffb; }
+        #user-options-list { margin-top: 20px; max-height: 250px; overflow-y: auto; }
+        .user-btn { display: block; width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #eee; border-radius: 10px; background: #fdfdfd; cursor: pointer; }
+
+        /* --- CHAT VIEW --- */
+        .chat-app { width: 100vw; height: 100vh; background: var(--wa-bg); display: none; flex-direction: column; }
         .header { 
-            background: var(--wa-header); padding: 10px 12px; 
-            display: flex; align-items: center; border-bottom: 1px solid #d1d7db; 
-            height: 60px; box-sizing: border-box; flex-shrink: 0;
+            background: var(--wa-header); padding: 10px 15px; display: flex; align-items: center; 
+            border-bottom: 1px solid #d1d7db; gap: 12px; flex-shrink: 0; height: 60px; box-sizing: border-box;
         }
-        .avatar { width: 38px; height: 38px; border-radius: 50%; background: #dfe5e7; flex-shrink: 0; }
-        .user-info { flex: 1; margin-left: 10px; overflow: hidden; }
-        .user-info h4 { margin: 0; font-size: 15px; }
+        .btn-back { background: none; border: none; font-size: 24px; cursor: pointer; color: #54656f; }
+        .search-box { background: white; border-radius: 20px; display: flex; align-items: center; padding: 5px 12px; flex: 1; max-width: 180px; margin-left: auto; }
+        .search-box input { border: none; outline: none; width: 100%; font-size: 14px; }
 
-        .search-container { 
-            background: rgba(255,255,255,0.8); border-radius: 20px; 
-            display: flex; align-items: center; padding: 4px 10px; 
-            width: 40%; max-width: 150px;
-        }
-        .search-input { border: none; outline: none; width: 100%; font-size: 13px; background: transparent; }
-
-        /* Chat window now goes all the way to the bottom */
         #chat-window { 
             flex: 1; overflow-y: scroll; padding: 10px 12px; 
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
             display: flex; flex-direction: column;
-            padding-bottom: env(safe-area-inset-bottom, 20px); /* Padding for modern mobile bottom bars */
         }
 
         .msg-container { display: flex; flex-direction: column; margin-bottom: 2px; }
         .bubble { 
             position: relative; padding: 6px 9px 8px; border-radius: 7.5px; 
-            max-width: 85%; font-size: 14px; line-height: 1.4; 
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); margin-top: 4px; 
+            max-width: 85%; font-size: 14.2px; line-height: 1.45; 
+            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); margin-top: 4px; word-wrap: break-word;
         }
         .received { align-self: flex-start; background: var(--wa-received); border-top-left-radius: 0; margin-left: 5px; }
         .sent { align-self: flex-end; background: var(--wa-sent); border-top-right-radius: 0; margin-right: 5px; }
-        
         .received::before { content: ""; position: absolute; left: -6px; top: 0; border-width: 0 6px 8px 0; border-style: solid; border-color: transparent var(--wa-received) transparent transparent; }
         .sent::before { content: ""; position: absolute; right: -6px; top: 0; border-width: 8px 6px 0 0; border-style: solid; border-color: var(--wa-sent) transparent transparent transparent; }
-
-        .time { font-size: 10px; color: var(--wa-time); float: right; margin: 6px 0 -2px 8px; }
-        .system-date { align-self: center; background: var(--wa-system); padding: 4px 10px; border-radius: 6px; font-size: 11px; margin: 10px 0; }
-        
+        .time { font-size: 10px; color: var(--wa-time); float: right; margin: 8px 0 -2px 8px; }
+        .system-date { align-self: center; background: var(--wa-system); padding: 5px 12px; border-radius: 7px; font-size: 12px; margin: 15px 0; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="upload-screen" class="card">
-        <h3>WhatsApp Viewer</h3>
-        <input type="file" id="fileInput" accept=".txt,.zip" style="width: 100%;">
+    <div id="dashboard">
+        <div class="dashboard-header">
+            <h2>My Chats</h2>
+            <button class="btn-add" onclick="openModal('upload-overlay')">Add New</button>
+        </div>
+        <div id="chat-list-container"></div>
     </div>
 
-    <div id="user-select-screen" class="card" style="display:none">
-        <h4>Who are you?</h4>
-        <div id="user-options-list"></div>
+    <div id="upload-overlay" class="overlay" onclick="if(event.target===this) closeModal('upload-overlay')">
+        <div class="modal">
+            <h3 style="margin:0">Import Chat</h3>
+            <div id="drop-zone" class="drop-zone">
+                <p style="color:#667781">Drop .txt or .zip here</p>
+                <input type="file" id="fileInput" accept=".txt,.zip" style="width:100%">
+            </div>
+            <button onclick="closeModal('upload-overlay')" style="margin-top:15px; border:none; background:none; color:#667781; cursor:pointer">Cancel</button>
+        </div>
+    </div>
+
+    <div id="user-select-overlay" class="overlay">
+        <div class="modal">
+            <h3>Who are you?</h3>
+            <p style="color:#667781; font-size:13px">Choose the name that represents "Sent" messages.</p>
+            <div id="user-options-list"></div>
+        </div>
     </div>
 
     <div class="chat-app" id="app">
         <div class="header">
-            <div class="avatar"></div>
-            <div class="user-info"><h4 id="chat-title">Chat History</h4></div>
-            <div class="search-container">
-                <input type="text" id="searchInput" class="search-input" placeholder="Search...">
-            </div>
+            <button class="btn-back" onclick="closeChat()">←</button>
+            <div style="flex:1; min-width:0;"><h4 id="active-chat-title" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Chat</h4></div>
+            <div class="search-box"><input type="text" id="searchInput" placeholder="Search..."></div>
         </div>
         <div id="chat-window"></div>
     </div>
 
 <script>
-    let chatData = "";
-    const fileInput = document.getElementById('fileInput');
-    const uploadScreen = document.getElementById('upload-screen');
-    const userSelectScreen = document.getElementById('user-select-screen');
-    const optionsList = document.getElementById('user-options-list');
-    const app = document.getElementById('app');
-    const chatWindow = document.getElementById('chat-window');
-    const searchInput = document.getElementById('searchInput');
+    let savedChats = JSON.parse(localStorage.getItem('wa_multi_chats') || '[]');
+    let pendingData = { text: "", name: "", fileDate: "" };
 
-    fileInput.addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (file.name.endsWith('.zip')) {
-            const zip = new JSZip();
-            const contents = await zip.loadAsync(file);
-            const chatFile = Object.keys(contents.files).find(name => name.endsWith('.txt'));
-            chatData = await contents.files[chatFile].async("text");
-        } else { chatData = await file.text(); }
-        showUserSelection();
-    });
+    window.onload = renderDashboard;
 
-    function showUserSelection() {
-        uploadScreen.style.display = 'none';
-        userSelectScreen.style.display = 'block';
-        const names = new Set();
-        const lines = chatData.split('\n');
-        lines.forEach(line => {
-            const match = line.match(/(?:^\[?\d.+\d\]?\s(?:-\s)?)([^:]+):\s/);
-            if (match) names.add(match[1].trim());
-        });
-        optionsList.innerHTML = '';
-        names.forEach(name => {
-            const btn = document.createElement('button');
-            btn.style.cssText = "display:block; width:100%; padding:12px; margin:8px 0; border:1px solid #ddd; border-radius:8px; background:white; cursor:pointer;";
-            btn.innerText = name;
-            btn.onclick = () => startViewer(name);
-            optionsList.appendChild(btn);
+    function renderDashboard() {
+        const container = document.getElementById('chat-list-container');
+        container.innerHTML = savedChats.length === 0 ? '<p style="text-align:center; color:#888; margin-top:50px;">No chats imported yet.</p>' : '';
+        savedChats.forEach((chat, index) => {
+            const card = document.createElement('div');
+            card.className = 'chat-card';
+            card.innerHTML = `
+                <div class="chat-info">
+                    <h4>${chat.name}</h4>
+                    <div class="meta-row">
+                        <span class="file-tag">Export Date: ${chat.fileDate || 'Unknown'}</span>
+                        <span>Added: ${chat.dateAdded}</span>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="btn-view" onclick="viewChat(${index})">Open</button>
+                    <button class="btn-del" onclick="deleteChat(${index})">Delete</button>
+                </div>`;
+            container.appendChild(card);
         });
     }
 
-    function startViewer(activeUser) {
-        userSelectScreen.style.display = 'none';
-        app.style.display = 'flex';
-        const lines = chatData.split('\n');
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('fileInput');
+
+    ['dragover', 'dragenter'].forEach(e => dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.add('drag-active'); }));
+    ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('drag-active')));
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+    async function handleFile(file) {
+        if (!file) return;
+        pendingData.name = file.name.replace('.zip', '').replace('.txt', '');
+        
+        // FIX: Reliable date capture
+        const timestamp = file.lastModified || Date.now();
+        const d = new Date(timestamp);
+        pendingData.fileDate = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        try {
+            let text = "";
+            if (file.name.endsWith('.zip')) {
+                const zip = new JSZip();
+                const contents = await zip.loadAsync(file);
+                const chatFile = Object.keys(contents.files).find(name => name.endsWith('.txt'));
+                if (!chatFile) return alert("No text file in ZIP");
+                text = await contents.files[chatFile].async("text");
+            } else { text = await file.text(); }
+            pendingData.text = text;
+
+            const names = new Set();
+            text.split('\n').slice(0, 500).forEach(line => {
+                const match = line.match(/(?:^\[?\d.+\d\]?\s(?:-\s)?)([^:]+):\s/);
+                if (match) names.add(match[1].trim());
+            });
+
+            closeModal('upload-overlay');
+            if (names.size === 0) saveChat("User"); 
+            else showUserSelect(Array.from(names));
+        } catch (err) { alert("Error reading file."); }
+    }
+
+    function showUserSelect(names) {
+        const list = document.getElementById('user-options-list');
+        list.innerHTML = '';
+        names.forEach(name => {
+            const btn = document.createElement('button');
+            btn.className = 'user-btn';
+            btn.innerText = name;
+            btn.onclick = () => saveChat(name);
+            list.appendChild(btn);
+        });
+        openModal('user-select-overlay');
+    }
+
+    function saveChat(activeUser) {
+        savedChats.push({
+            name: pendingData.name, data: pendingData.text, user: activeUser,
+            fileDate: pendingData.fileDate, dateAdded: new Date().toLocaleDateString()
+        });
+        try {
+            localStorage.setItem('wa_multi_chats', JSON.stringify(savedChats));
+        } catch (e) {
+            alert("Storage full! Delete an old chat first.");
+            savedChats.pop();
+            return;
+        }
+        closeModal('user-select-overlay');
+        renderDashboard();
+    }
+
+    function viewChat(index) {
+        const chat = savedChats[index];
+        document.getElementById('dashboard').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.getElementById('active-chat-title').innerText = chat.name;
+        const win = document.getElementById('chat-window');
+        win.innerHTML = '';
         let lastDate = "";
-        lines.forEach(line => {
+        chat.data.split('\n').forEach(line => {
             const match = line.match(/(?:^\[?(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}(?::\d{2})?\s?[APM]*)\]?\s(?:-\s)?)([^:]+):\s([\s\S]+)/);
             if (match) {
                 const [_, date, time, author, content] = match;
                 if (date !== lastDate) {
-                    const d = document.createElement('div');
-                    d.className = 'system-date'; d.innerText = date;
-                    chatWindow.appendChild(d);
-                    lastDate = date;
+                    const d = document.createElement('div'); d.className = 'system-date'; d.innerText = date;
+                    win.appendChild(d); lastDate = date;
                 }
-                renderBubble(author.trim(), content.trim(), time, author.trim() === activeUser);
+                const isSent = author.trim() === chat.user;
+                const div = document.createElement('div'); div.className = 'msg-container';
+                div.innerHTML = `<div class="bubble ${isSent ? 'sent' : 'received'}"><span>${content.replace(/\n/g, '<br>')}</span><span class="time">${time}</span></div>`;
+                win.appendChild(div);
             }
         });
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+        win.scrollTop = win.scrollHeight;
     }
 
-    function renderBubble(author, content, time, isSent) {
-        const container = document.createElement('div');
-        container.className = 'msg-container';
-        const bubble = document.createElement('div');
-        bubble.className = `bubble ${isSent ? 'sent' : 'received'}`;
-        bubble.innerHTML = `<span>${content.replace(/\n/g, '<br>')}</span><span class="time">${time}</span>`;
-        container.appendChild(bubble);
-        chatWindow.appendChild(container);
+    function deleteChat(index) {
+        if(confirm("Delete this chat permanently?")) {
+            savedChats.splice(index, 1);
+            localStorage.setItem('wa_multi_chats', JSON.stringify(savedChats));
+            renderDashboard();
+        }
     }
 
-    searchInput.addEventListener('input', function(e) {
+    function closeChat() {
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
         document.querySelectorAll('.msg-container').forEach(m => {
             m.innerText.toLowerCase().includes(term) ? m.classList.remove('hidden') : m.classList.add('hidden');
